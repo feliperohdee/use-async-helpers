@@ -1,19 +1,22 @@
 {
-	"name": "use-async-helpers",
-	"version": "1.0.1",
-	"main": "dist/index.js",
-	"repository": "https://github.com/feliperohdee/use-async-helpers.git",
-	"author": "Felipe Rohde <feliperohdee@gmail.com>",
-	"license": "MIT",
-	"devDependencies": {
-		"prettier": "^3.4.1",
-		"typescript": "^5.7.2",
-		"vitest": "^2.1.6"
-	},
-	"scripts": {
-		"build": "tsc -p tsconfig.json",
-		"lint": "prettier --write . && yarn tsc",
-		"npm-publish": "yarn test --run && yarn build && yarn version --patch --no-git-tag-version && yarn publish --non-interactive",
-		"test": "vitest"
-	}
+    "author": "Felipe Rohde <feliperohdee@gmail.com>",
+    "devDependencies": {
+        "prettier": "^3.4.1",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.6"
+    },
+    "files": [
+        "dist"
+    ],
+    "license": "MIT",
+    "main": "dist/index.js",
+    "name": "use-async-helpers",
+    "repository": "https://github.com/feliperohdee/use-async-helpers.git",
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "lint": "prettier --write . && yarn tsc",
+        "npm-publish": "yarn test --run && yarn build && yarn version --patch --no-git-tag-version && yarn publish --non-interactive",
+        "test": "vitest"
+    },
+    "version": "1.0.2"
 }
