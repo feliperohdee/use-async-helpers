@@ -1,12 +1,13 @@
 {
-	"compilerOptions": {
+    "compilerOptions": {
         "declaration": true,
         "esModuleInterop": true,
-        "module": "ESNext",
-        "moduleResolution": "node",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
         "outDir": "./dist",
         "strict": true,
-        "target": "ES2020"
+        "allowJs": true,
+        "target": "ESNext"
     },
-	"exclude": ["dist", "node_modules", "**/*.spec.ts"]
+    "exclude": ["dist", "node_modules", "**/*.spec.ts"]
 }
