@@ -1,12 +1,12 @@
 {
     "compilerOptions": {
+        "allowJs": true,
         "declaration": true,
         "esModuleInterop": true,
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
+        "module": "ESNext",
+        "moduleResolution": "node",
         "outDir": "./dist",
         "strict": true,
-        "allowJs": true,
         "target": "ESNext"
     },
     "exclude": ["dist", "node_modules", "**/*.spec.ts"]
