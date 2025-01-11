@@ -1,3 +1,4 @@
+.DS_Store
 consolidate*
 node_modules
 dist
