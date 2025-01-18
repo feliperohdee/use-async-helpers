@@ -1,22 +1,28 @@
 import { describe, expect, it, vi } from 'vitest';
 import promiseAllSettled from './promise-all-settled';
 
-describe('all-settled', () => {
+const wait = (ms: number) => {
+	return new Promise(resolve => {
+		setTimeout(resolve, ms);
+	});
+};
+
+describe('/promise-all-settled', () => {
 	it('executes tasks respecting max concurrency and captures res order', async () => {
 		const executedTasks: number[] = [];
 		const tasks = [
 			async () => {
-				await new Promise(resolve => setTimeout(resolve, 300));
+				await wait(300);
 				executedTasks.push(1);
 				return 1;
 			},
 			async () => {
-				await new Promise(resolve => setTimeout(resolve, 100));
+				await wait(100);
 				executedTasks.push(2);
 				return 2;
 			},
 			async () => {
-				await new Promise(resolve => setTimeout(resolve, 200));
+				await wait(200);
 				executedTasks.push(3);
 				return 3;
 			}
@@ -66,7 +72,7 @@ describe('all-settled', () => {
 			.map((_, index) => async () => {
 				runningTasks.add(index);
 				maxObserved.value = Math.max(maxObserved.value, runningTasks.size);
-				await new Promise(resolve => setTimeout(resolve, 50));
+				await wait(50);
 				runningTasks.delete(index);
 				return index;
 			});
@@ -78,11 +84,11 @@ describe('all-settled', () => {
 	it('preserves result order regardless of completion time', async () => {
 		const tasks = [
 			async () => {
-				await new Promise(resolve => setTimeout(resolve, 300));
+				await wait(300);
 				return 'slow';
 			},
 			async () => {
-				await new Promise(resolve => setTimeout(resolve, 100));
+				await wait(100);
 				return 'fast';
 			}
 		];
@@ -100,9 +106,7 @@ describe('all-settled', () => {
 		const tasks = Array(10)
 			.fill(null)
 			.map((_, i) => async () => {
-				await new Promise(resolve => {
-					return setTimeout(resolve, Math.random() * 100);
-				});
+				await wait(Math.random() * 100);
 
 				spy(i);
 
