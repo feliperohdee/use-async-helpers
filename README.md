@@ -131,19 +131,24 @@ const fileTasks = fileNames.map(name => async () => {
 const results = await promiseAll(fileTasks, 2);
 ```
 
-### Promise Map
+# Promise Map
 
 #### Type Definition
 
 ```typescript
-function promiseMap<T, R>(items: T[], fn: (item: T, index: number) => Promise<R>, maxConcurrency: number): Promise<R[]>;
+function promiseMap<T, R>(
+	promises: Promise<T>[] | T[],
+	mapper: (item: Awaited<T>, index: number) => Promise<R> | R,
+	maxConcurrency: number
+): Promise<R[]>;
 ```
 
 #### Features
 
+- Accepts both promises and raw values
 - Maintains result order
 - Controlled concurrency
-- Transforms items asynchronously
+- Transforms items asynchronously with index parameter
 - Resource optimization
 
 #### Basic Usage Example
@@ -152,23 +157,24 @@ function promiseMap<T, R>(items: T[], fn: (item: T, index: number) => Promise<R>
 import { promiseMap } from 'use-async-helpers';
 
 // User Data Transformation Example
-const userIds = [1, 2, 3, 4, 5];
-const users = await promiseMap(
-	userIds,
-	async id => {
-		const response = await fetch(`/api/users/${id}`);
+const userPromises = [Promise.resolve({ id: 1, name: 'John' }), Promise.resolve({ id: 2, name: 'Jane' })];
+
+const transformedUsers = await promiseMap(
+	userPromises,
+	async (user, index) => {
+		const response = await fetch(`/api/users/${user.id}/details`);
 		return response.json();
 	},
 	2
 );
 
-// File Processing Example
-const files = ['file1.txt', 'file2.txt', 'file3.txt'];
-const contents = await promiseMap(
-	files,
-	async filename => {
-		const content = await readFile(filename);
-		return content.toUpperCase();
+// Direct Value Processing Example
+const values = [1, 2, 3, 4, 5];
+const doubled = await promiseMap(
+	values,
+	async (num, index) => {
+		await delay(100); // Simulate async operation
+		return num * 2;
 	},
 	3
 );
@@ -179,14 +185,19 @@ const contents = await promiseMap(
 #### Type Definition
 
 ```typescript
-function promiseFilter<T>(items: T[], predicate: (item: T, index: number) => Promise<boolean>, maxConcurrency: number): Promise<T[]>;
+function promiseFilter<T>(
+	promises: Promise<T>[] | T[],
+	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
+	maxConcurrency: number
+): Promise<T[]>;
 ```
 
 #### Features
 
+- Accepts both promises and raw values
 - Maintains original item order
 - Controlled concurrency
-- Async filtering capability
+- Async filtering capability with index parameter
 - Resource optimization
 
 #### Basic Usage Example
@@ -194,34 +205,26 @@ function promiseFilter<T>(items: T[], predicate: (item: T, index: number) => Pro
 ```typescript
 import { promiseFilter } from 'use-async-helpers';
 
-// URL Validation Example
-const urls = ['url1', 'url2', 'url3', 'url4'];
-const validUrls = await promiseFilter(
-	urls,
-	async url => {
-		try {
-			const response = await fetch(url);
-			return response.ok;
-		} catch {
-			return false;
-		}
+// Filtering Promise Results
+const userPromises = [Promise.resolve({ id: 1, active: true }), Promise.resolve({ id: 2, active: false })];
+
+const activeUsers = await promiseFilter(
+	userPromises,
+	async (user, index) => {
+		return user.active;
 	},
 	2
 );
 
-// File Existence Check Example
-const files = ['file1.txt', 'file2.txt', 'file3.txt'];
-const existingFiles = await promiseFilter(
-	files,
-	async file => {
-		try {
-			await access(file);
-			return true;
-		} catch {
-			return false;
-		}
+// Direct Value Filtering
+const numbers = [1, 2, 3, 4, 5];
+const evenNumbers = await promiseFilter(
+	numbers,
+	async (num, index) => {
+		await delay(100); // Simulate async check
+		return num % 2 === 0;
 	},
-	3
+	2
 );
 ```
 
@@ -230,19 +233,19 @@ const existingFiles = await promiseFilter(
 #### Type Definition
 
 ```typescript
-function promiseReduce<T, R, A>(
-	items: T[],
-	mapFn: (item: T, index: number) => Promise<R>,
-	reducer: (accumulator: A, value: R) => A,
-	initialValue: A,
+function promiseReduce<T, R>(
+	promises: Promise<T>[] | T[],
+	reducer: (accumulator: R, value: Awaited<T>) => R,
+	initialValue: R,
 	maxConcurrency: number
-): Promise<A>;
+): Promise<R>;
 ```
 
 #### Features
 
-- Two-phase processing: async mapping followed by sync reduction
-- Controlled concurrency for mapping phase
+- Accepts both promises and raw values
+- Concurrent resolution of promises
+- Synchronous reduction after resolution
 - Maintains data consistency
 - Resource optimization
 
@@ -251,28 +254,20 @@ function promiseReduce<T, R, A>(
 ```typescript
 import { promiseReduce } from 'use-async-helpers';
 
-// File Size Sum Example
-const files = ['file1.txt', 'file2.txt', 'file3.txt'];
-const totalSize = await promiseReduce(
-	files,
-	async file => {
-		const stats = await stat(file);
-		return stats.size;
-	},
-	(total, size) => total + size,
-	0,
-	2
-);
+// Sum of Async Values
+const numberPromises = [Promise.resolve(1), Promise.resolve(2), Promise.resolve(3)];
 
-// Word Count Example
-const wordCount = await promiseReduce(
-	files,
-	async file => {
-		const content = await readFile(file, 'utf-8');
-		return content.split(/\s+/).length;
-	},
-	(total, count) => total + count,
-	0,
+const sum = await promiseReduce(numberPromises, (acc, num) => acc + num, 0, 2);
+
+// Object Accumulation
+const dataPromises = [Promise.resolve({ count: 1 }), Promise.resolve({ count: 2 })];
+
+const total = await promiseReduce(
+	dataPromises,
+	(acc, data) => ({
+		total: acc.total + data.count
+	}),
+	{ total: 0 },
 	2
 );
 ```

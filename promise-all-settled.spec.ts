@@ -8,7 +8,7 @@ const wait = (ms: number) => {
 };
 
 describe('/promise-all-settled', () => {
-	it('executes tasks respecting max concurrency and captures res order', async () => {
+	it('should executes tasks respecting max concurrency and captures res order', async () => {
 		const executedTasks: number[] = [];
 		const tasks = [
 			async () => {
@@ -38,13 +38,13 @@ describe('/promise-all-settled', () => {
 		]);
 	});
 
-	it('handles empty tasks array', async () => {
+	it('should handles empty tasks array', async () => {
 		const res = await promiseAllSettled([], 2);
 
 		expect(res).toEqual([]);
 	});
 
-	it('handles mix of successful and failed tasks', async () => {
+	it('should handles mix of successful and failed tasks', async () => {
 		const errorMessage = 'Task failed';
 		const tasks = [
 			async () => 1,
@@ -63,7 +63,7 @@ describe('/promise-all-settled', () => {
 		]);
 	});
 
-	it('runs tasks concurrently respecting maxConcurrency limit', async () => {
+	it('should runs tasks concurrently respecting maxConcurrency limit', async () => {
 		const maxConcurrency = 2;
 		const runningTasks = new Set();
 		const maxObserved = { value: 0 };
@@ -81,7 +81,7 @@ describe('/promise-all-settled', () => {
 		expect(maxObserved.value).toEqual(maxConcurrency);
 	});
 
-	it('preserves result order regardless of completion time', async () => {
+	it('should preserves result order regardless of completion time', async () => {
 		const tasks = [
 			async () => {
 				await wait(300);
@@ -101,7 +101,7 @@ describe('/promise-all-settled', () => {
 		]);
 	});
 
-	it('handles large number of tasks with mixed res', async () => {
+	it('should handles large number of tasks with mixed res', async () => {
 		const spy = vi.fn();
 		const tasks = Array(10)
 			.fill(null)
@@ -139,7 +139,7 @@ describe('/promise-all-settled', () => {
 		});
 	});
 
-	it('continues processing remaining tasks after errors', async () => {
+	it('should continues processing remaining tasks after errors', async () => {
 		const executedTasks: number[] = [];
 		const tasks = [
 			async () => {

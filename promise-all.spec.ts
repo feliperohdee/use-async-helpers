@@ -9,7 +9,7 @@ const wait = (ms: number) => {
 };
 
 describe('/promise-all', () => {
-	it('executes tasks respecting max concurrency', async () => {
+	it('should executes tasks respecting max concurrency', async () => {
 		const executedTasks: number[] = [];
 		const tasks = [
 			async () => {
@@ -35,13 +35,13 @@ describe('/promise-all', () => {
 		expect(executedTasks).toEqual([2, 1, 3]);
 	});
 
-	it('handles empty tasks array', async () => {
+	it('should handles empty tasks array', async () => {
 		const res = await promiseAll([], 2);
 
 		expect(res).toEqual([]);
 	});
 
-	it('handles errors in tasks', async () => {
+	it('should handles errors in tasks', async () => {
 		const errorMessage = 'Task failed';
 		const tasks = [
 			async () => 1,
@@ -54,7 +54,7 @@ describe('/promise-all', () => {
 		await expect(promiseAll(tasks, 2)).rejects.toThrow(errorMessage);
 	});
 
-	it('runs tasks concurrently', async () => {
+	it('should runs tasks concurrently', async () => {
 		const maxConcurrency = 2;
 		const runningTasks = new Set();
 		const maxObserved = { value: 0 };
@@ -72,7 +72,7 @@ describe('/promise-all', () => {
 		expect(maxObserved.value).toEqual(maxConcurrency);
 	});
 
-	it('preserves task res order', async () => {
+	it('should preserves task res order', async () => {
 		const tasks = [
 			async () => {
 				await wait(300);
@@ -89,7 +89,7 @@ describe('/promise-all', () => {
 		expect(res).toEqual(['slow', 'fast']);
 	});
 
-	it('handles large number of tasks', async () => {
+	it('should handles large number of tasks', async () => {
 		const spy = vi.fn();
 		const tasks = Array(10)
 			.fill(null)

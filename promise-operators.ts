@@ -1,46 +1,65 @@
 import promiseAll from './promise-all';
 
 const promiseFilter = async <T>(
-	items: T[],
-	predicate: (item: T, index: number) => Promise<boolean>,
+	promises: Promise<T>[] | T[],
+	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
 	maxConcurrency: number
 ): Promise<T[]> => {
+	const promiseArray = promises.map(item => {
+		return item instanceof Promise ? item : Promise.resolve(item);
+	});
+
 	const results = await promiseMap(
-		items,
-		async (item, index) => ({
-			item,
-			shouldKeep: await predicate(item, index)
+		promiseArray,
+		async (resolvedItem, index) => ({
+			item: resolvedItem,
+			keep: await predicate(resolvedItem, index)
 		}),
 		maxConcurrency
 	);
 
 	return results
 		.filter(result => {
-			return result.shouldKeep;
+			return result.keep;
 		})
 		.map(result => {
 			return result.item;
 		});
 };
 
-const promiseMap = async <T, R>(items: T[], fn: (item: T, index: number) => Promise<R>, maxConcurrency: number): Promise<R[]> => {
-	const tasks = items.map((item, index) => {
-		return () => {
-			return fn(item, index);
+const promiseMap = async <T, R>(
+	promises: Promise<T>[] | T[],
+	mapper: (item: Awaited<T>, index: number) => Promise<R> | R,
+	maxConcurrency: number
+): Promise<R[]> => {
+	const promiseArray = promises.map(item => {
+		return item instanceof Promise ? item : Promise.resolve(item);
+	});
+
+	const tasks = promiseArray.map((promise, index) => {
+		return async () => {
+			const resolvedItem = await promise;
+
+			return mapper(resolvedItem, index);
 		};
 	});
 
 	return promiseAll(tasks, maxConcurrency);
 };
 
-const promiseReduce = async <T, R, A>(
-	items: T[],
-	fn: (item: T, index: number) => Promise<R>,
-	reducer: (accumulator: A, value: R) => A,
-	initialValue: A,
+const promiseReduce = async <T, R>(
+	promises: Promise<T>[] | T[],
+	reducer: (accumulator: R, value: Awaited<T>) => R,
+	initialValue: R,
 	maxConcurrency: number
-): Promise<A> => {
-	const mappedValues = await promiseMap(items, fn, maxConcurrency);
+): Promise<R> => {
+	const mappedValues = await promiseMap(
+		promises,
+		res => {
+			return res;
+		},
+		maxConcurrency
+	);
 
 	return mappedValues.reduce(reducer, initialValue);
 };
