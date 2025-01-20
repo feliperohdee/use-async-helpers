@@ -3,7 +3,7 @@ import promiseAll from './promise-all';
 const promiseFilter = async <T>(
 	promises: Promise<T>[] | T[],
 	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
-	maxConcurrency: number
+	maxConcurrency: number = Infinity
 ): Promise<T[]> => {
 	const promiseArray = promises.map(item => {
 		return item instanceof Promise ? item : Promise.resolve(item);
@@ -30,7 +30,7 @@ const promiseFilter = async <T>(
 const promiseMap = async <T, R>(
 	promises: Promise<T>[] | T[],
 	mapper: (item: Awaited<T>, index: number) => Promise<R> | R,
-	maxConcurrency: number
+	maxConcurrency: number = Infinity
 ): Promise<R[]> => {
 	const promiseArray = promises.map(item => {
 		return item instanceof Promise ? item : Promise.resolve(item);
@@ -51,7 +51,7 @@ const promiseReduce = async <T, R>(
 	promises: Promise<T>[] | T[],
 	reducer: (accumulator: R, value: Awaited<T>) => R,
 	initialValue: R,
-	maxConcurrency: number
+	maxConcurrency: number = Infinity
 ): Promise<R> => {
 	const mappedValues = await promiseMap(
 		promises,

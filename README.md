@@ -139,7 +139,7 @@ const results = await promiseAll(fileTasks, 2);
 function promiseMap<T, R>(
 	promises: Promise<T>[] | T[],
 	mapper: (item: Awaited<T>, index: number) => Promise<R> | R,
-	maxConcurrency: number
+	maxConcurrency: number = Infinity
 ): Promise<R[]>;
 ```
 
@@ -188,7 +188,7 @@ const doubled = await promiseMap(
 function promiseFilter<T>(
 	promises: Promise<T>[] | T[],
 	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
-	maxConcurrency: number
+	maxConcurrency: number = Infinity
 ): Promise<T[]>;
 ```
 
@@ -237,7 +237,7 @@ function promiseReduce<T, R>(
 	promises: Promise<T>[] | T[],
 	reducer: (accumulator: R, value: Awaited<T>) => R,
 	initialValue: R,
-	maxConcurrency: number
+	maxConcurrency: number = Infinity
 ): Promise<R>;
 ```
 
