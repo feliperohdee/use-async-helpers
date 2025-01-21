@@ -1,4 +1,4 @@
-import promiseAll from './promise-all.js';
+import promiseAll from './promise-all';
 
 const promiseFilter = async <T>(
 	promises: Promise<T>[] | T[],
