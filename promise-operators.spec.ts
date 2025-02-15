@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { promiseMap, promiseFilter, promiseReduce } from './promise-operators';
 
 const wait = (ms: number) => {
@@ -198,7 +198,7 @@ describe('/promise-operators', () => {
 
 			const res = await promiseReduce(
 				items,
-				(acc, val) => {
+				async (acc, val) => {
 					return acc + val;
 				},
 				0,
