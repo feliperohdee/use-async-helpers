@@ -19,7 +19,7 @@ A comprehensive TypeScript utility library for managing concurrent promises, pro
   - [Promise All Settled](#promise-all-settled)
   - [Retry Function](#retry-function)
 - [Examples](#examples)
-  - [Queue Management](#queue-management)
+  - [Promise Queue Management](#promise-queue-management)
   - [Concurrent Promise Execution](#concurrent-promise-execution)
   - [Advanced Promise Operations](#advanced-promise-operations)
   - [Retry Mechanism](#retry-mechanism)
@@ -38,7 +38,7 @@ npm install use-async-helpers
 ### Promise Management
 
 - ✨ Concurrent promise execution with customizable limits
-- 🔄 Queue-based promise processing
+- 🔄 PromiseQueue-based promise processing
 - 🎯 Result order preservation
 - ⚡ Dynamic concurrency adjustment
 
@@ -63,7 +63,7 @@ npm install use-async-helpers
 #### Type Definition
 
 ```typescript
-class Queue {
+class PromiseQueue {
 	constructor(initialConcurrency?: number);
 	add(...tasks: (() => Promise<any>)[]): void;
 	setConcurrency(n: number): void;
@@ -73,7 +73,7 @@ class Queue {
 }
 ```
 
-#### Queue Options
+#### PromiseQueue Options
 
 ```typescript
 type QueueOptions = {
@@ -84,9 +84,9 @@ type QueueOptions = {
 #### Basic Usage Example
 
 ```typescript
-import { Queue } from 'use-async-helpers';
+import { PromiseQueue } from 'use-async-helpers';
 
-const queue = new Queue(3); // Initialize with concurrency of 3
+const queue = new PromiseQueue(3); // Initialize with concurrency of 3
 await queue.add(() => fetchData());
 queue.setConcurrency(5);
 await queue.waitStop();
@@ -97,13 +97,13 @@ await queue.waitStop();
 #### Type Definition
 
 ```typescript
-function promiseAll<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | Queue = Infinity): Promise<T[]>;
+function promiseAll<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | PromiseQueue = Infinity): Promise<T[]>;
 ```
 
 #### Features
 
 - Maintains result order
-- Controlled concurrency with number or Queue
+- Controlled concurrency with number or PromiseQueue
 - Fast failure on errors
 - Resource optimization
 - Shared queue capability across multiple calls
@@ -111,7 +111,7 @@ function promiseAll<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: numbe
 #### Basic Usage Example
 
 ```typescript
-import { promiseAll, Queue } from 'use-async-helpers';
+import { promiseAll, PromiseQueue } from 'use-async-helpers';
 
 // With concurrency limit
 const apis = ['/api/users', '/api/posts', '/api/comments'];
@@ -123,7 +123,7 @@ const tasks = apis.map(api => async () => {
 const [users, posts, comments] = await promiseAll(tasks, 2);
 
 // With concurrency queue
-const queue = new Queue(3);
+const queue = new PromiseQueue(3);
 const fileNames = ['data1.json', 'data2.json', 'data3.json'];
 const fileTasks = fileNames.map(name => async () => {
 	const content = await readFile(name, 'utf-8');
@@ -147,7 +147,7 @@ const otherResults = await promiseAll(otherTasks, queue);
 function promiseMap<T, R>(
 	promises: Promise<T>[] | T[],
 	mapper: (item: Awaited<T>, index: number) => Promise<R> | R,
-	maxConcurrencyOrQueue: number | Queue = Infinity
+	maxConcurrencyOrQueue: number | PromiseQueue = Infinity
 ): Promise<R[]>;
 ```
 
@@ -155,7 +155,7 @@ function promiseMap<T, R>(
 
 - Accepts both promises and raw values
 - Maintains result order
-- Controlled concurrency with number or Queue
+- Controlled concurrency with number or PromiseQueue
 - Transforms items asynchronously with index parameter
 - Resource optimization
 - Shared queue capability across multiple operations
@@ -163,7 +163,7 @@ function promiseMap<T, R>(
 #### Basic Usage Example
 
 ```typescript
-import { promiseMap, Queue } from 'use-async-helpers';
+import { promiseMap, PromiseQueue } from 'use-async-helpers';
 
 // User Data Transformation with concurrency limit
 const userPromises = [Promise.resolve({ id: 1, name: 'John' }), Promise.resolve({ id: 2, name: 'Jane' })];
@@ -178,7 +178,7 @@ const transformedUsers = await promiseMap(
 );
 
 // Processing with concurrency queue
-const queue = new Queue(3);
+const queue = new PromiseQueue(3);
 const values = [1, 2, 3, 4, 5];
 const doubled = await promiseMap(
 	values,
@@ -198,7 +198,7 @@ const doubled = await promiseMap(
 function promiseFilter<T>(
 	promises: Promise<T>[] | T[],
 	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
-	maxConcurrencyOrQueue: number | Queue = Infinity
+	maxConcurrencyOrQueue: number | PromiseQueue = Infinity
 ): Promise<T[]>;
 ```
 
@@ -206,7 +206,7 @@ function promiseFilter<T>(
 
 - Accepts both promises and raw values
 - Maintains original item order
-- Controlled concurrency with number or Queue
+- Controlled concurrency with number or PromiseQueue
 - Async filtering capability with index parameter
 - Resource optimization
 - Shared queue capability across multiple operations
@@ -214,7 +214,7 @@ function promiseFilter<T>(
 #### Basic Usage Example
 
 ```typescript
-import { promiseFilter, Queue } from 'use-async-helpers';
+import { promiseFilter, PromiseQueue } from 'use-async-helpers';
 
 // Filtering Promise Results with concurrency limit
 const userPromises = [Promise.resolve({ id: 1, active: true }), Promise.resolve({ id: 2, active: false })];
@@ -228,7 +228,7 @@ const activeUsers = await promiseFilter(
 );
 
 // Filtering with concurrency queue
-const queue = new Queue(2);
+const queue = new PromiseQueue(2);
 const numbers = [1, 2, 3, 4, 5];
 const evenNumbers = await promiseFilter(
 	numbers,
@@ -249,7 +249,7 @@ function promiseReduce<T, R>(
 	promises: Promise<T>[] | T[],
 	reducer: (accumulator: R, value: Awaited<T>, index: number) => Promise<R> | R,
 	initialValue: R,
-	maxConcurrencyOrQueue: number | Queue = Infinity
+	maxConcurrencyOrQueue: number | PromiseQueue = Infinity
 ): Promise<R>;
 ```
 
@@ -259,7 +259,7 @@ function promiseReduce<T, R>(
 - Concurrent resolution of promises
 - Synchronous reduction after resolution
 - Maintains data consistency
-- Resource optimization with number or Queue
+- Resource optimization with number or PromiseQueue
 - Shared queue capability across multiple operations
 
 #### Basic Usage Example
@@ -290,7 +290,7 @@ const total = await promiseReduce(
 #### Type Definition
 
 ```typescript
-function promiseAllSettled<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | Queue = Infinity): Promise<SettledResult<T>[]>;
+function promiseAllSettled<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | PromiseQueue = Infinity): Promise<SettledResult<T>[]>;
 
 type SettledResult<T> = {
 	status: 'fulfilled' | 'rejected';
@@ -302,7 +302,7 @@ type SettledResult<T> = {
 #### Features
 
 - Maintains result order
-- Controlled concurrency with number or Queue
+- Controlled concurrency with number or PromiseQueue
 - Continues execution even with errors
 - Detailed result status
 - Shared queue capability across multiple calls
@@ -310,7 +310,7 @@ type SettledResult<T> = {
 #### Basic Usage Example
 
 ```typescript
-import { promiseAllSettled, Queue } from 'use-async-helpers';
+import { promiseAllSettled, PromiseQueue } from 'use-async-helpers';
 
 // With concurrency limit
 const urls = ['/api/data1', '/api/broken-endpoint', '/api/data3'];
@@ -324,7 +324,7 @@ const results = await promiseAllSettled(tasks, 2);
 const successfulData = results.filter(result => result.status === 'fulfilled').map(result => result.value);
 
 // With concurrency queue
-const queue = new Queue(3);
+const queue = new PromiseQueue(3);
 const fileProcessingTasks = [
 	/* ... */
 ];
@@ -373,15 +373,15 @@ const result = await retryFn(
 
 ## Complex Examples
 
-### Queue Management
+### Promise Queue Management
 
 #### Rate-Limited API Requests Example
 
 ```typescript
-import { Queue } from 'use-async-helpers';
+import { PromiseQueue } from 'use-async-helpers';
 
 // Create a queue for API requests
-const apiQueue = new Queue(3);
+const apiQueue = new PromiseQueue(3);
 
 // API request function
 const fetchUserData = async (userId: number) => {
@@ -409,18 +409,18 @@ async function processUsers(userIds: number[]) {
 await processUsers([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 ```
 
-#### File Processing Queue Example
+#### File Processing PromiseQueue Example
 
 ```typescript
-import { Queue } from 'use-async-helpers';
+import { PromiseQueue } from 'use-async-helpers';
 import { promises as fs } from 'fs';
 
 class FileProcessor {
-	private queue: Queue;
+	private queue: PromiseQueue;
 	private processedFiles: Set<string>;
 
 	constructor(maxConcurrency = 3) {
-		this.queue = new Queue(maxConcurrency);
+		this.queue = new PromiseQueue(maxConcurrency);
 		this.processedFiles = new Set();
 	}
 
@@ -586,7 +586,7 @@ npm test
 
 Test Suites Include:
 
-- Queue Management
+- PromiseQueue Management
 - Concurrent Execution
 - Error Handling
 - Retry Mechanisms

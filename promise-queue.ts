@@ -1,4 +1,4 @@
-class Queue {
+class PromiseQueue {
 	private concurrency: number;
 	private queue: (() => Promise<any>)[];
 	private running: boolean;
@@ -71,4 +71,4 @@ class Queue {
 	}
 }
 
-export default Queue;
+export default PromiseQueue;
