@@ -1,20 +1,18 @@
-const promiseAll = async <T>(tasks: (() => Promise<T>)[], maxConcurrency: number): Promise<T[]> => {
-	let results: T[] = new Array(tasks.length);
-	let nextIndex = 0;
+import Queue from './promise-queue';
+
+const promiseAll = async <T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | Queue = Infinity): Promise<T[]> => {
+	const queue = maxConcurrencyOrQueue instanceof Queue ? maxConcurrencyOrQueue : new Queue(maxConcurrencyOrQueue as number);
+
 	let errorOccurred = false;
 	let error: any;
+	let results: T[] = new Array(tasks.length);
 
-	const runTask = async () => {
-		// eslint-disable-next-line no-constant-condition
-		while (true) {
+	for (let i = 0; i < tasks.length; i++) {
+		const currentIndex = i;
+
+		queue.add(async () => {
 			if (errorOccurred) {
-				break;
-			}
-
-			const currentIndex = nextIndex++;
-
-			if (currentIndex >= tasks.length) {
-				break;
+				return;
 			}
 
 			try {
@@ -22,18 +20,11 @@ const promiseAll = async <T>(tasks: (() => Promise<T>)[], maxConcurrency: number
 			} catch (err) {
 				errorOccurred = true;
 				error = err;
-				break;
 			}
-		}
-	};
-
-	const workers = Array(Math.min(maxConcurrency, tasks.length))
-		.fill(null)
-		.map(() => {
-			return runTask();
 		});
+	}
 
-	await Promise.all(workers);
+	await queue.waitStop();
 
 	if (errorOccurred) {
 		throw error;

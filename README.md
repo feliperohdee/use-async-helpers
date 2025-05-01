@@ -97,22 +97,23 @@ await queue.waitStop();
 #### Type Definition
 
 ```typescript
-function promiseAll<T>(tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]>;
+function promiseAll<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | Queue = Infinity): Promise<T[]>;
 ```
 
 #### Features
 
 - Maintains result order
-- Controlled concurrency
+- Controlled concurrency with number or Queue
 - Fast failure on errors
 - Resource optimization
+- Shared queue capability across multiple calls
 
 #### Basic Usage Example
 
 ```typescript
-import { promiseAll } from 'use-async-helpers';
+import { promiseAll, Queue } from 'use-async-helpers';
 
-// API Request Example
+// With concurrency limit
 const apis = ['/api/users', '/api/posts', '/api/comments'];
 const tasks = apis.map(api => async () => {
 	const response = await fetch(api);
@@ -121,17 +122,24 @@ const tasks = apis.map(api => async () => {
 
 const [users, posts, comments] = await promiseAll(tasks, 2);
 
-// File Processing Example
+// With concurrency queue
+const queue = new Queue(3);
 const fileNames = ['data1.json', 'data2.json', 'data3.json'];
 const fileTasks = fileNames.map(name => async () => {
 	const content = await readFile(name, 'utf-8');
 	return JSON.parse(content);
 });
 
-const results = await promiseAll(fileTasks, 2);
+const results = await promiseAll(fileTasks, queue);
+
+// Reuse the same queue for another operation
+const otherTasks = [
+	/* ... */
+];
+const otherResults = await promiseAll(otherTasks, queue);
 ```
 
-# Promise Map
+### Promise Map
 
 #### Type Definition
 
@@ -139,7 +147,7 @@ const results = await promiseAll(fileTasks, 2);
 function promiseMap<T, R>(
 	promises: Promise<T>[] | T[],
 	mapper: (item: Awaited<T>, index: number) => Promise<R> | R,
-	maxConcurrency: number = Infinity
+	maxConcurrencyOrQueue: number | Queue = Infinity
 ): Promise<R[]>;
 ```
 
@@ -147,16 +155,17 @@ function promiseMap<T, R>(
 
 - Accepts both promises and raw values
 - Maintains result order
-- Controlled concurrency
+- Controlled concurrency with number or Queue
 - Transforms items asynchronously with index parameter
 - Resource optimization
+- Shared queue capability across multiple operations
 
 #### Basic Usage Example
 
 ```typescript
-import { promiseMap } from 'use-async-helpers';
+import { promiseMap, Queue } from 'use-async-helpers';
 
-// User Data Transformation Example
+// User Data Transformation with concurrency limit
 const userPromises = [Promise.resolve({ id: 1, name: 'John' }), Promise.resolve({ id: 2, name: 'Jane' })];
 
 const transformedUsers = await promiseMap(
@@ -168,7 +177,8 @@ const transformedUsers = await promiseMap(
 	2
 );
 
-// Direct Value Processing Example
+// Processing with concurrency queue
+const queue = new Queue(3);
 const values = [1, 2, 3, 4, 5];
 const doubled = await promiseMap(
 	values,
@@ -176,7 +186,7 @@ const doubled = await promiseMap(
 		await delay(100); // Simulate async operation
 		return num * 2;
 	},
-	3
+	queue
 );
 ```
 
@@ -188,7 +198,7 @@ const doubled = await promiseMap(
 function promiseFilter<T>(
 	promises: Promise<T>[] | T[],
 	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
-	maxConcurrency: number = Infinity
+	maxConcurrencyOrQueue: number | Queue = Infinity
 ): Promise<T[]>;
 ```
 
@@ -196,16 +206,17 @@ function promiseFilter<T>(
 
 - Accepts both promises and raw values
 - Maintains original item order
-- Controlled concurrency
+- Controlled concurrency with number or Queue
 - Async filtering capability with index parameter
 - Resource optimization
+- Shared queue capability across multiple operations
 
 #### Basic Usage Example
 
 ```typescript
-import { promiseFilter } from 'use-async-helpers';
+import { promiseFilter, Queue } from 'use-async-helpers';
 
-// Filtering Promise Results
+// Filtering Promise Results with concurrency limit
 const userPromises = [Promise.resolve({ id: 1, active: true }), Promise.resolve({ id: 2, active: false })];
 
 const activeUsers = await promiseFilter(
@@ -216,7 +227,8 @@ const activeUsers = await promiseFilter(
 	2
 );
 
-// Direct Value Filtering
+// Filtering with concurrency queue
+const queue = new Queue(2);
 const numbers = [1, 2, 3, 4, 5];
 const evenNumbers = await promiseFilter(
 	numbers,
@@ -224,7 +236,7 @@ const evenNumbers = await promiseFilter(
 		await delay(100); // Simulate async check
 		return num % 2 === 0;
 	},
-	2
+	queue
 );
 ```
 
@@ -235,9 +247,9 @@ const evenNumbers = await promiseFilter(
 ```typescript
 function promiseReduce<T, R>(
 	promises: Promise<T>[] | T[],
-	reducer: (accumulator: R, value: Awaited<T>) => R,
+	reducer: (accumulator: R, value: Awaited<T>, index: number) => Promise<R> | R,
 	initialValue: R,
-	maxConcurrency: number = Infinity
+	maxConcurrencyOrQueue: number | Queue = Infinity
 ): Promise<R>;
 ```
 
@@ -247,7 +259,8 @@ function promiseReduce<T, R>(
 - Concurrent resolution of promises
 - Synchronous reduction after resolution
 - Maintains data consistency
-- Resource optimization
+- Resource optimization with number or Queue
+- Shared queue capability across multiple operations
 
 #### Basic Usage Example
 
@@ -277,35 +290,45 @@ const total = await promiseReduce(
 #### Type Definition
 
 ```typescript
+function promiseAllSettled<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | Queue = Infinity): Promise<SettledResult<T>[]>;
+
 type SettledResult<T> = {
 	status: 'fulfilled' | 'rejected';
 	value?: T;
 	error?: any;
 };
-
-function promiseAllSettled<T>(tasks: (() => Promise<T>)[], concurrency: number): Promise<SettledResult<T>[]>;
 ```
+
+#### Features
+
+- Maintains result order
+- Controlled concurrency with number or Queue
+- Continues execution even with errors
+- Detailed result status
+- Shared queue capability across multiple calls
 
 #### Basic Usage Example
 
 ```typescript
-import { promiseAllSettled } from 'use-async-helpers';
+import { promiseAllSettled, Queue } from 'use-async-helpers';
 
-// User Data Processing Example
-const userIds = [1, 2, 3, 4, 5];
-const tasks = userIds.map(id => async () => {
-	const response = await fetch(`/api/users/${id}`);
+// With concurrency limit
+const urls = ['/api/data1', '/api/broken-endpoint', '/api/data3'];
+const tasks = urls.map(url => async () => {
+	const response = await fetch(url);
+	if (!response.ok) throw new Error(`Failed to fetch ${url}`);
 	return response.json();
 });
 
 const results = await promiseAllSettled(tasks, 2);
-results.forEach((result, index) => {
-	if (result.status === 'fulfilled') {
-		console.log(`User ${userIds[index]} loaded:`, result.value);
-	} else {
-		console.log(`Failed to load user ${userIds[index]}:`, result.error);
-	}
-});
+const successfulData = results.filter(result => result.status === 'fulfilled').map(result => result.value);
+
+// With concurrency queue
+const queue = new Queue(3);
+const fileProcessingTasks = [
+	/* ... */
+];
+const fileResults = await promiseAllSettled(fileProcessingTasks, queue);
 ```
 
 ### Retry Function

@@ -1,37 +1,31 @@
+import Queue from './promise-queue';
+
 type SettledResult<T> = {
 	status: 'fulfilled' | 'rejected';
 	value?: T;
 	error?: any;
 };
 
-const allSettled = async <T>(tasks: (() => Promise<T>)[], maxConcurrency: number = Infinity): Promise<SettledResult<T>[]> => {
-	let results: SettledResult<T>[] = new Array(tasks.length);
-	let nextIndex = 0;
+const allSettled = async <T>(
+	tasks: (() => Promise<T>)[],
+	maxConcurrencyOrQueue: number | Queue = Infinity
+): Promise<SettledResult<T>[]> => {
+	const queue = maxConcurrencyOrQueue instanceof Queue ? maxConcurrencyOrQueue : new Queue(maxConcurrencyOrQueue as number);
+	const results: SettledResult<T>[] = new Array(tasks.length);
 
-	const runTask = async () => {
-		while (true) {
-			const index = nextIndex++;
-
-			if (index >= tasks.length) {
-				break;
-			}
-
+	for (let i = 0; i < tasks.length; i++) {
+		const index = i;
+		queue.add(async () => {
 			try {
 				const value = await tasks[index]();
 				results[index] = { status: 'fulfilled', value };
 			} catch (error) {
 				results[index] = { status: 'rejected', error };
 			}
-		}
-	};
-
-	const workers = Array(Math.min(maxConcurrency, tasks.length))
-		.fill(null)
-		.map(() => {
-			return runTask();
 		});
+	}
 
-	await Promise.all(workers);
+	await queue.waitStop();
 	return results;
 };
 

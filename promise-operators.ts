@@ -1,9 +1,10 @@
 import promiseAll from './promise-all';
+import Queue from './promise-queue';
 
 const promiseFilter = async <T>(
 	promises: Promise<T>[] | T[],
 	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
-	maxConcurrency: number = Infinity
+	maxConcurrencyOrQueue: number | Queue = Infinity
 ): Promise<T[]> => {
 	const promisesArray = promises.map(item => {
 		return item instanceof Promise ? item : Promise.resolve(item);
@@ -15,7 +16,7 @@ const promiseFilter = async <T>(
 			item: resolvedPromise,
 			keep: await predicate(resolvedPromise, index)
 		}),
-		maxConcurrency
+		maxConcurrencyOrQueue
 	);
 
 	return results
@@ -30,7 +31,7 @@ const promiseFilter = async <T>(
 const promiseMap = async <T, R>(
 	promises: Promise<T>[] | T[],
 	mapper: (value: Awaited<T>, index: number) => Promise<R> | R,
-	maxConcurrency: number = Infinity
+	maxConcurrencyOrQueue: number | Queue = Infinity
 ): Promise<R[]> => {
 	const promisesArray = promises.map(value => {
 		return value instanceof Promise ? value : Promise.resolve(value);
@@ -48,14 +49,14 @@ const promiseMap = async <T, R>(
 		};
 	});
 
-	return promiseAll(tasks, maxConcurrency);
+	return promiseAll(tasks, maxConcurrencyOrQueue);
 };
 
 const promiseReduce = async <T, R>(
 	promises: Promise<T>[] | T[],
 	reducer: (reduction: R, value: Awaited<T>, index: number) => Promise<R> | R,
 	initialValue: R,
-	maxConcurrency: number = Infinity
+	maxConcurrencyOrQueue: number | Queue = Infinity
 ): Promise<R> => {
 	const promisesArray = promises.map(item => {
 		return item instanceof Promise ? item : Promise.resolve(item);
@@ -71,7 +72,7 @@ const promiseReduce = async <T, R>(
 		};
 	});
 
-	let resolvedValues = await promiseAll(tasks, maxConcurrency);
+	let resolvedValues = await promiseAll(tasks, maxConcurrencyOrQueue);
 	let accumulator = initialValue;
 
 	for (let i = 0; i < resolvedValues.length; i++) {
