@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+
 import promiseAllSettled from './promise-all-settled';
+import PromiseQueue from './promise-queue';
 
 const wait = (ms: number) => {
 	return new Promise(resolve => {
@@ -8,7 +10,7 @@ const wait = (ms: number) => {
 };
 
 describe('/promise-all-settled', () => {
-	it('should executes tasks respecting max concurrency and captures res order', async () => {
+	it('should executes tasks concurrently', async () => {
 		const executedTasks: number[] = [];
 		const tasks = [
 			async () => {
@@ -37,6 +39,64 @@ describe('/promise-all-settled', () => {
 			{ status: 'fulfilled', value: 3 }
 		]);
 	});
+
+	it('should executes tasks concurrently with queue', async () => {
+		const executedTasks: number[] = [];
+		const tasks = [
+			async () => {
+				await wait(300);
+				executedTasks.push(1);
+				return 1;
+			},
+			async () => {
+				await wait(100);
+				executedTasks.push(2);
+				return 2;
+			},
+			async () => {
+				await wait(200);
+				executedTasks.push(3);
+				return 3;
+			}
+		];
+
+		const res = await promiseAllSettled(tasks, new PromiseQueue(2));
+
+		expect(executedTasks).toEqual([2, 1, 3]);
+		expect(res).toEqual([
+			{ status: 'fulfilled', value: 1 },
+			{ status: 'fulfilled', value: 2 },
+			{ status: 'fulfilled', value: 3 }
+		]);
+	});
+
+	it('should handle deadlock with queue', async () => {
+		const queue = new PromiseQueue(10);
+		const task1 = vi.fn(async () => {
+			await queue.wait(100);
+			await task2();
+
+			return true;
+		});
+
+		const task2 = vi.fn(async () => {
+			await promiseAllSettled(
+				[
+					async () => {
+						await queue.wait(100);
+
+						return true;
+					}
+				],
+				queue
+			);
+		});
+
+		await promiseAllSettled([task1], queue);
+
+		expect(task1).toHaveBeenCalledOnce();
+		expect(task2).toHaveBeenCalledOnce();
+	}, 1000);
 
 	it('should handles empty tasks array', async () => {
 		const res = await promiseAllSettled([], 2);

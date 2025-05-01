@@ -1,11 +1,13 @@
 class PromiseQueue {
-	private concurrency: number;
+	public concurrency: number;
+	public id: string;
 	private queue: (() => Promise<any>)[];
-	private running: boolean;
-	private runningPromises: number;
-	private started: boolean;
+	public running: boolean;
+	public runningPromises: number;
+	public started: boolean;
 
 	constructor(initialConcurrency: number = 5) {
+		this.id = crypto.randomUUID();
 		this.concurrency = initialConcurrency;
 		this.queue = [];
 		this.running = false;
@@ -14,12 +16,19 @@ class PromiseQueue {
 	}
 
 	add(...fn: (() => Promise<any>)[]): void {
-		this.queue = this.queue.concat(fn);
+		this.queue = [...this.queue, ...fn];
 
 		if (!this.started) {
 			this.started = true;
-			setTimeout(() => this.run());
+
+			queueMicrotask(() => {
+				this.run();
+			});
 		}
+	}
+
+	remainingCapacity(): number {
+		return this.concurrency - this.runningPromises;
 	}
 
 	setConcurrency(n: number): void {
@@ -46,9 +55,9 @@ class PromiseQueue {
 
 				await Promise.all(promises);
 			}
-		}
 
-		this.stop();
+			this.stop();
+		}
 	}
 
 	stop(): void {

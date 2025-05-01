@@ -290,7 +290,10 @@ const total = await promiseReduce(
 #### Type Definition
 
 ```typescript
-function promiseAllSettled<T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | PromiseQueue = Infinity): Promise<SettledResult<T>[]>;
+function promiseAllSettled<T>(
+	tasks: (() => Promise<T>)[],
+	maxConcurrencyOrQueue: number | PromiseQueue = Infinity
+): Promise<SettledResult<T>[]>;
 
 type SettledResult<T> = {
 	status: 'fulfilled' | 'rejected';

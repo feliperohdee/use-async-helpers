@@ -1,7 +1,22 @@
-import Queue from './promise-queue';
+import PromiseQueue from './promise-queue';
 
-const promiseAll = async <T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | Queue = Infinity): Promise<T[]> => {
-	const queue = maxConcurrencyOrQueue instanceof Queue ? maxConcurrencyOrQueue : new Queue(maxConcurrencyOrQueue as number);
+const promiseAll = async <T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue: number | PromiseQueue = Infinity): Promise<T[]> => {
+	const queue =
+		maxConcurrencyOrQueue instanceof PromiseQueue
+			? (() => {
+					const queue = maxConcurrencyOrQueue;
+
+					if (!queue.started) {
+						return queue;
+					}
+
+					// create a new queue with the remaining capacity to avoid deadlock and minimum half of the capacity
+					const remainingCapacity = queue.remainingCapacity();
+					const concurrency = Math.max(1, remainingCapacity, Math.ceil(queue.concurrency / 2));
+
+					return new PromiseQueue(concurrency);
+				})()
+			: new PromiseQueue(maxConcurrencyOrQueue as number);
 
 	let errorOccurred = false;
 	let error: any;

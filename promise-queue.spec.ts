@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import Queue from './promise-queue';
+import PromiseQueue from './promise-queue';
 
 describe('/promise-queue', () => {
-	let queue: Queue;
+	let queue: PromiseQueue;
 
 	beforeEach(() => {
-		queue = new Queue();
+		queue = new PromiseQueue();
 	});
 
 	it('should add tasks to the queue', async () => {

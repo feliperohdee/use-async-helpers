@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import promiseAll from './promise-all';
+import PromiseQueue from './promise-queue';
 
 const wait = (ms: number) => {
 	return new Promise(resolve => {
@@ -70,6 +71,52 @@ describe('/promise-all', () => {
 
 		await promiseAll(tasks, maxConcurrency);
 		expect(maxObserved.value).toEqual(maxConcurrency);
+	});
+
+	it('should runs tasks concurrently with queue', async () => {
+		const maxConcurrency = 2;
+		const runningTasks = new Set();
+		const maxObserved = { value: 0 };
+		const tasks = Array(5)
+			.fill(null)
+			.map((_, index) => async () => {
+				runningTasks.add(index);
+				maxObserved.value = Math.max(maxObserved.value, runningTasks.size);
+				await wait(50);
+				runningTasks.delete(index);
+				return index;
+			});
+
+		await promiseAll(tasks, new PromiseQueue(maxConcurrency));
+		expect(maxObserved.value).toEqual(maxConcurrency);
+	});
+
+	it('should handle deadlock with queue', async () => {
+		const queue = new PromiseQueue(1);
+		const task1 = vi.fn(async () => {
+			await queue.wait(100);
+			await task2();
+
+			return true;
+		});
+
+		const task2 = vi.fn(async () => {
+			await promiseAll(
+				[
+					async () => {
+						await queue.wait(100);
+
+						return true;
+					}
+				],
+				queue
+			);
+		});
+
+		await promiseAll([task1], queue);
+
+		expect(task1).toHaveBeenCalledOnce();
+		expect(task2).toHaveBeenCalledOnce();
 	});
 
 	it('should preserves task res order', async () => {

@@ -1,10 +1,10 @@
 import promiseAll from './promise-all';
-import Queue from './promise-queue';
+import PromiseQueue from './promise-queue';
 
 const promiseFilter = async <T>(
 	promises: Promise<T>[] | T[],
 	predicate: (item: Awaited<T>, index: number) => Promise<boolean> | boolean,
-	maxConcurrencyOrQueue: number | Queue = Infinity
+	maxConcurrencyOrQueue: number | PromiseQueue = Infinity
 ): Promise<T[]> => {
 	const promisesArray = promises.map(item => {
 		return item instanceof Promise ? item : Promise.resolve(item);
@@ -31,7 +31,7 @@ const promiseFilter = async <T>(
 const promiseMap = async <T, R>(
 	promises: Promise<T>[] | T[],
 	mapper: (value: Awaited<T>, index: number) => Promise<R> | R,
-	maxConcurrencyOrQueue: number | Queue = Infinity
+	maxConcurrencyOrQueue: number | PromiseQueue = Infinity
 ): Promise<R[]> => {
 	const promisesArray = promises.map(value => {
 		return value instanceof Promise ? value : Promise.resolve(value);
@@ -56,7 +56,7 @@ const promiseReduce = async <T, R>(
 	promises: Promise<T>[] | T[],
 	reducer: (reduction: R, value: Awaited<T>, index: number) => Promise<R> | R,
 	initialValue: R,
-	maxConcurrencyOrQueue: number | Queue = Infinity
+	maxConcurrencyOrQueue: number | PromiseQueue = Infinity
 ): Promise<R> => {
 	const promisesArray = promises.map(item => {
 		return item instanceof Promise ? item : Promise.resolve(item);
