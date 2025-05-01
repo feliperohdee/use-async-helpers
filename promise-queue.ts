@@ -15,15 +15,43 @@ class PromiseQueue {
 		this.started = false;
 	}
 
-	add(...fn: (() => Promise<any>)[]): void {
+	async add(...fn: (() => Promise<any>)[]): Promise<void> {
 		this.queue = [...this.queue, ...fn];
 
 		if (!this.started) {
 			this.started = true;
+			this.running = true;
+			await this.processNext();
+		} else if (this.running && this.remainingCapacity() > 0) {
+			// If we have capacity and we're already running, process next tasks
+			await this.processNext();
+		}
+	}
 
-			queueMicrotask(() => {
-				this.run();
-			});
+	private async executeTask(fn: () => Promise<any>): Promise<void> {
+		try {
+			await fn();
+		} catch {
+			// suppress errors
+		}
+	}
+
+	private async launchTask(fn: () => Promise<any>): Promise<void> {
+		try {
+			await this.executeTask(fn);
+		} catch (error) {
+			// Catch any errors from executeTask (shouldn't happen as it catches internally)
+		} finally {
+			this.runningPromises--;
+
+			// When a task completes, try to process more tasks if available
+			if (this.queue.length > 0 && this.remainingCapacity() > 0 && this.running) {
+				await this.processNext();
+			} else if (this.queue.length === 0 && this.runningPromises === 0) {
+				// If queue is empty and no tasks are running, we're done
+				this.running = false;
+				this.started = false;
+			}
 		}
 	}
 
@@ -31,32 +59,32 @@ class PromiseQueue {
 		return this.concurrency - this.runningPromises;
 	}
 
-	setConcurrency(n: number): void {
-		this.concurrency = n;
+	private async processNext(): Promise<void> {
+		// Process as many tasks as we have capacity for
+		const availableCapacity = this.remainingCapacity();
+
+		if (availableCapacity <= 0 || this.queue.length === 0) {
+			return;
+		}
+
+		const batchSize = Math.min(availableCapacity, this.queue.length);
+		const tasks = this.queue.splice(0, batchSize);
+
+		this.runningPromises += tasks.length;
+
+		// Execute each task independently
+		for (const fn of tasks) {
+			// Launch task execution without awaiting
+			this.launchTask(fn);
+		}
 	}
 
-	private async run(): Promise<void> {
-		if (!this.running) {
-			this.running = true;
+	async setConcurrency(n: number): Promise<void> {
+		this.concurrency = n;
 
-			while (this.queue.length) {
-				const batch = this.queue.splice(0, this.concurrency);
-				const promises = batch.map(async fn => {
-					try {
-						await fn();
-					} catch {
-						// suppress errors
-					} finally {
-						this.runningPromises--;
-					}
-				});
-
-				this.runningPromises += promises.length;
-
-				await Promise.all(promises);
-			}
-
-			this.stop();
+		// If we increased concurrency and have tasks waiting, try to process more
+		if (this.running && this.queue.length > 0 && this.remainingCapacity() > 0) {
+			await this.processNext();
 		}
 	}
 

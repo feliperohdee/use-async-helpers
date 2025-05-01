@@ -21,5 +21,5 @@
 		"npm-publish": "yarn test --run && yarn build && yarn version --patch --no-git-tag-version && yarn publish --non-interactive",
 		"test": "vitest"
 	},
-	"version": "1.0.28"
+	"version": "1.0.29"
 }
