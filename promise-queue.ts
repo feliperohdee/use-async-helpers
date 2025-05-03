@@ -1,34 +1,44 @@
 class PromiseQueue {
+	private queue: (() => Promise<any>)[];
+	public children: Set<PromiseQueue>;
 	public concurrency: number;
 	public id: string;
-	private queue: (() => Promise<any>)[];
+	public parent: PromiseQueue | null;
 	public running: boolean;
 	public runningPromises: number;
 	public started: boolean;
 
-	constructor(initialConcurrency: number = 5) {
+	constructor(concurrency: number = 5) {
+		this.children = new Set();
+		this.concurrency = concurrency;
 		this.id = crypto.randomUUID();
-		this.concurrency = initialConcurrency;
+		this.parent = null;
 		this.queue = [];
 		this.running = false;
 		this.runningPromises = 0;
 		this.started = false;
 	}
 
-	async add(...fn: (() => Promise<any>)[]): Promise<void> {
+	add(...fn: (() => Promise<any>)[]) {
 		this.queue = [...this.queue, ...fn];
 
 		if (!this.started) {
 			this.started = true;
 			this.running = true;
-			await this.processNext();
+			// Register with parent when we start processing
+			if (this.parent) {
+				this.parent.registerChild(this);
+				this.updateConcurrency();
+			}
+
+			this.processNext();
 		} else if (this.running && this.remainingCapacity() > 0) {
 			// If we have capacity and we're already running, process next tasks
-			await this.processNext();
+			this.processNext();
 		}
 	}
 
-	private async executeTask(fn: () => Promise<any>): Promise<void> {
+	private async executeTask(fn: () => Promise<any>) {
 		try {
 			await fn();
 		} catch {
@@ -36,7 +46,7 @@ class PromiseQueue {
 		}
 	}
 
-	private async launchTask(fn: () => Promise<any>): Promise<void> {
+	private async launchTask(fn: () => Promise<any>) {
 		try {
 			await this.executeTask(fn);
 		} catch (error) {
@@ -46,12 +56,24 @@ class PromiseQueue {
 
 			// When a task completes, try to process more tasks if available
 			if (this.queue.length > 0 && this.remainingCapacity() > 0 && this.running) {
-				await this.processNext();
+				this.processNext();
 			} else if (this.queue.length === 0 && this.runningPromises === 0) {
 				// If queue is empty and no tasks are running, we're done
 				this.running = false;
 				this.started = false;
+				if (this.parent) {
+					this.parent.unregisterChild(this);
+				}
 			}
+		}
+	}
+
+	private registerChild(child: PromiseQueue): void {
+		this.children.add(child);
+		
+		// Update concurrency for all children when a new child is added
+		for (const childQueue of this.children) {
+			childQueue.updateConcurrency();
 		}
 	}
 
@@ -59,7 +81,12 @@ class PromiseQueue {
 		return this.concurrency - this.runningPromises;
 	}
 
-	private async processNext(): Promise<void> {
+	private processNext() {
+		if (this.parent) {
+			// Update concurrency based on parent settings
+			this.updateConcurrency();
+		}
+
 		// Process as many tasks as we have capacity for
 		const availableCapacity = this.remainingCapacity();
 
@@ -74,18 +101,30 @@ class PromiseQueue {
 
 		// Execute each task independently
 		for (const fn of tasks) {
-			// Launch task execution without awaiting
 			this.launchTask(fn);
 		}
 	}
 
-	async setConcurrency(n: number): Promise<void> {
+	setConcurrency(n: number) {
 		this.concurrency = n;
+
+		// Update concurrency of child queues
+		for (const childQueue of this.children) {
+			childQueue.updateConcurrency();
+		}
 
 		// If we increased concurrency and have tasks waiting, try to process more
 		if (this.running && this.queue.length > 0 && this.remainingCapacity() > 0) {
-			await this.processNext();
+			this.processNext();
 		}
+	}
+
+	setParent(parent: PromiseQueue): void {
+		if (!parent) {
+			throw new Error('Parent queue cannot be null or undefined');
+		}
+
+		this.parent = parent;
 	}
 
 	stop(): void {
@@ -93,15 +132,36 @@ class PromiseQueue {
 		this.running = false;
 		this.runningPromises = 0;
 		this.started = false;
+
+		if (this.parent) {
+			this.parent.unregisterChild(this);
+		}
 	}
 
-	async wait(ms: number): Promise<void> {
+	private unregisterChild(child: PromiseQueue): void {
+		this.children.delete(child);
+	}
+
+	private updateConcurrency(): void {
+		if (!this.parent) {
+			return;
+		}
+
+		// minimum concurrency is 1, or 1/4 of parent's concurrency
+		const minimumConcurrency = Math.max(1, Math.ceil(this.parent.concurrency / 4));
+		// per child concurrency is parent's concurrency divided by number of children
+		const perChild = Math.ceil(this.parent.concurrency / this.parent.children.size);
+
+		this.concurrency = Math.max(minimumConcurrency, perChild);
+	}
+
+	async wait(ms: number) {
 		return new Promise(resolve => {
 			return setTimeout(resolve, ms);
 		});
 	}
 
-	async waitStop(): Promise<void> {
+	async waitStop() {
 		while (this.queue.length || this.runningPromises > 0) {
 			await this.wait(50);
 		}

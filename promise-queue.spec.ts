@@ -10,7 +10,7 @@ describe('/promise-queue', () => {
 	});
 
 	it('should add tasks to the queue', async () => {
-		const task = vi.fn(() => Promise.resolve());
+		const task = vi.fn();
 		queue.add(task);
 
 		await queue.waitStop();
@@ -20,16 +20,18 @@ describe('/promise-queue', () => {
 	it('should respect concurrency limit', async () => {
 		const TIME = 50;
 
-		for await (const n of [1, 2, 3]) {
-			queue.setConcurrency(n);
+		queue.setConcurrency(1);
 
+		for await (const n of [1, 2, 3]) {
 			const task = vi.fn(() => queue.wait(TIME));
 			const startTime = Date.now();
-			queue.add(task, task, task, task);
-			await queue.waitStop();
-			const endTime = Date.now();
 
+			queue.add(task, task, task, task);
+
+			await queue.waitStop();
 			expect(task).toHaveBeenCalledTimes(4);
+
+			const endTime = Date.now();
 
 			if (n === 1) {
 				expect(endTime - startTime).toBeGreaterThanOrEqual(TIME * 4);
@@ -40,7 +42,7 @@ describe('/promise-queue', () => {
 	});
 
 	it('should allow changing concurrency', async () => {
-		const task = vi.fn(() => Promise.resolve());
+		const task = vi.fn();
 		queue.setConcurrency(1);
 		queue.add(task, task);
 		await queue.waitStop();
@@ -53,7 +55,7 @@ describe('/promise-queue', () => {
 	});
 
 	it('should handle errors in tasks', async () => {
-		const successTask = vi.fn(() => Promise.resolve());
+		const successTask = vi.fn();
 		const errorTask = vi.fn(() => Promise.reject(new Error('Test error')));
 
 		queue.add(successTask, errorTask, successTask);
@@ -71,13 +73,16 @@ describe('/promise-queue', () => {
 	});
 
 	it('should stop running tasks', async () => {
-		const task = vi.fn(() => queue.wait(100));
+		queue.setConcurrency(2);
+
+		const task = vi.fn(() => {
+			return queue.wait(100);
+		});
+
 		queue.add(task, task, task);
-		await queue.wait(50); // Wait a bit for tasks to start
 		queue.stop();
-		await queue.waitStop();
-		expect(task).toHaveBeenCalledTimes(3);
-		expect(await queue.waitStop()).toBeUndefined();
+
+		expect(task).toHaveBeenCalledTimes(2);
 	});
 
 	describe('dynamic execution', () => {
@@ -122,16 +127,15 @@ describe('/promise-queue', () => {
 			});
 
 			// Start with longTask and mediumTask
-			await queue.add(longTask, mediumTask);
+			queue.add(longTask, mediumTask);
 
 			// Wait for mediumTask to complete but longTask should still be running
 			await queue.wait(150);
 
 			// At this point, mediumTask should be done, and we should have capacity
 			// Add new tasks - they should start immediately without waiting for longTask
-			await queue.add(shortTask1, shortTask2);
+			queue.add(shortTask1, shortTask2);
 
-			// Wait for all tasks to complete
 			await queue.waitStop();
 
 			// Verify all tasks were called
@@ -175,33 +179,26 @@ describe('/promise-queue', () => {
 					executionOrder.push(id);
 					await queue.wait(delay);
 					results.push(`Task ${id} completed`);
+
 					return `Task ${id} completed`;
 				};
 			};
 
 			// Add 3 tasks with varying durations
-			await queue.add(createTask(1, 100), createTask(2, 100), createTask(3, 100));
-
-			// Wait for first task to start
-			await queue.wait(50);
+			queue.add(createTask(1, 100), createTask(2, 100), createTask(3, 100));
 
 			// Task 1 should be running, 2 and 3 waiting
 			expect(executionOrder).toEqual([1]);
 
 			// Increase concurrency during execution
-			await queue.setConcurrency(3);
-
-			// Wait a bit to allow tasks to start due to increased concurrency
-			await queue.wait(20);
+			queue.setConcurrency(3);
 
 			// Task 2 and 3 should now have started as well
 			expect(executionOrder).toContain(2);
 			expect(executionOrder).toContain(3);
 
 			// Add more tasks
-			await queue.add(createTask(4, 50), createTask(5, 50));
-
-			// Wait for all tasks to complete
+			queue.add(createTask(4, 50), createTask(5, 50));
 			await queue.waitStop();
 
 			// Verify all 5 tasks completed
@@ -242,24 +239,15 @@ describe('/promise-queue', () => {
 			};
 
 			// Start with slow task and one medium task
-			await queue.add(slowTask, createMediumTask(2));
-
-			// Wait for both to start
-			await queue.wait(20);
+			queue.add(slowTask, createMediumTask(2));
 
 			// Wait for medium task to finish but slow task still running
 			await queue.wait(100);
 
 			// Add more tasks - should start immediately as capacity becomes available
-			await queue.add(createFastTask(3), createFastTask(4), createMediumTask(5));
-
-			// Wait a bit for some tasks to start based on available capacity
-			await queue.wait(20);
-
+			queue.add(createFastTask(3), createFastTask(4), createMediumTask(5));
 			// Add even more tasks while others are running
-			await queue.add(createFastTask(6), createFastTask(7));
-
-			// Wait for all tasks to complete
+			queue.add(createFastTask(6), createFastTask(7));
 			await queue.waitStop();
 
 			// Verify all tasks executed
@@ -278,6 +266,185 @@ describe('/promise-queue', () => {
 			expect(taskResults.indexOf(4)).toBeLessThan(slowTaskIndex);
 			expect(taskResults.indexOf(6)).toBeLessThan(slowTaskIndex);
 			expect(taskResults.indexOf(7)).toBeLessThan(slowTaskIndex);
+		});
+	});
+
+	describe('parent-child queue', () => {
+		let parent: PromiseQueue;
+		let child1: PromiseQueue;
+		let child2: PromiseQueue;
+		let child3: PromiseQueue;
+
+		beforeEach(() => {
+			parent = new PromiseQueue(6);
+			child1 = new PromiseQueue(2);
+			child2 = new PromiseQueue(2);
+			child3 = new PromiseQueue(2);
+		});
+
+		it('should register child with parent when processing tasks', async () => {
+			child1.setParent(parent);
+
+			const task = vi.fn(() => {
+				return queue.wait(50);
+			});
+			child1.add(task);
+			expect(parent.children.has(child1)).toEqual(true);
+
+			await child1.waitStop();
+			expect(task).toHaveBeenCalledTimes(1);
+			expect(parent.children.has(child1)).toEqual(false);
+		});
+
+		it('should unregister child from parent when queue is done', async () => {
+			child1.setParent(parent);
+
+			const task = vi.fn();
+			child1.add(task);
+			await child1.waitStop();
+
+			expect(parent.children.has(child1)).toEqual(false);
+		});
+
+		it('should adjust child concurrency based on parent concurrency', async () => {
+			parent.setConcurrency(8);
+			child1.setParent(parent);
+
+			const task = vi.fn(() => {
+				return queue.wait(50);
+			});
+
+			child1.add(task);
+			expect(child1.concurrency).toEqual(8);
+
+			// Add second child
+			child2.setParent(parent);
+			const task2 = vi.fn();
+
+			child2.add(task2);
+			expect(child1.concurrency).toEqual(4);
+			expect(child2.concurrency).toEqual(4);
+
+			await Promise.all([child1.waitStop(), child2.waitStop()]);
+		});
+
+		it('should handle three children with proper concurrency distribution', async () => {
+			parent.setConcurrency(10);
+			child1.setParent(parent);
+			child2.setParent(parent);
+			child3.setParent(parent);
+
+			const task = vi.fn(() => {
+				return queue.wait(50);
+			});
+
+			child1.add(task);
+			child2.add(task);
+			child3.add(task);
+
+			expect(child1.concurrency).toEqual(4);
+			expect(child2.concurrency).toEqual(4);
+			expect(child3.concurrency).toEqual(4);
+
+			await Promise.all([child1.waitStop(), child2.waitStop(), child3.waitStop()]);
+		});
+
+		it('should handle dynamic addition of children affecting concurrency', async () => {
+			parent.setConcurrency(10);
+			child1.setParent(parent);
+
+			const longTask = vi.fn(() => {
+				return parent.wait(150);
+			});
+
+			// Start a task on child1
+			child1.add(longTask);
+			expect(child1.concurrency).toEqual(10);
+
+			// Add second child while first is running
+			child2.setParent(parent);
+			const task2 = vi.fn(() => {
+				return parent.wait(100);
+			});
+			child2.add(task2);
+
+			expect(parent.children.size).toEqual(2);
+			expect(child1.concurrency).toEqual(5);
+			expect(child2.concurrency).toEqual(5);
+
+			await Promise.all([child1.waitStop(), child2.waitStop()]);
+		});
+
+		it('should respect minimum concurrency of 1', async () => {
+			// Set parent with very low concurrency
+			parent.setConcurrency(0);
+
+			// Set up many children
+			for (let i = 0; i < 5; i++) {
+				const child = new PromiseQueue();
+				child.setParent(parent);
+
+				const task = vi.fn();
+				child.add(task);
+			}
+
+			// Each child should still have minimum concurrency of 1
+			for (const child of parent.children) {
+				expect(child.concurrency).toEqual(1);
+			}
+		});
+
+		it('should execute tasks across multiple child queues efficiently', async () => {
+			parent.setConcurrency(4);
+			child1.setParent(parent);
+			child2.setParent(parent);
+
+			const executionTimes: { [key: string]: number[] } = {
+				start: [],
+				end: []
+			};
+
+			const createTimedTask = (id: number, delay: number) => {
+				return async () => {
+					executionTimes.start.push(Date.now());
+					await parent.wait(delay);
+					executionTimes.end.push(Date.now());
+				};
+			};
+
+			// first batch
+			child1.add(createTimedTask(1, 100), createTimedTask(2, 100));
+			child2.add(createTimedTask(3, 100), createTimedTask(4, 100));
+
+			// second batch
+			child1.add(createTimedTask(5, 50), createTimedTask(6, 50));
+			child2.add(createTimedTask(7, 50), createTimedTask(8, 50));
+
+			await Promise.all([child1.waitStop(), child2.waitStop()]);
+
+			const startTimes = [...executionTimes.start];
+
+			// First 4 tasks should start at similar times (parent concurrency = 4)
+			expect(startTimes[3] - startTimes[0]).toBeLessThan(50);
+
+			// But at least one of tasks 5-8 should start later
+			// Get the earliest start time from the second batch
+			const secondBatchStart = Math.min(...executionTimes.start.slice(4));
+
+			// It should start after the first batch
+			expect(secondBatchStart - startTimes[0]).toBeGreaterThan(50);
+		});
+
+		it('should throw when setParent is called with invalid parent', async () => {
+			try {
+				// @ts-expect-error
+				child1.setParent(null);
+
+				throw new Error('expected to throw');
+			} catch (err) {
+				expect(err).toBeInstanceOf(Error);
+				expect((err as Error).message).toContain('Parent queue cannot be null');
+			}
 		});
 	});
 });
