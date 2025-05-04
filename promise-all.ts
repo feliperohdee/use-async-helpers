@@ -10,13 +10,11 @@ const promiseAll = async <T>(tasks: (() => Promise<T>)[], maxConcurrencyOrQueue:
 						return queue;
 					}
 
-					// create a new queue with the remaining capacity to avoid deadlock and minimum half of the capacity
-					const remainingCapacity = queue.remainingCapacity();
-					const concurrency = Math.max(1, remainingCapacity, Math.ceil(queue.concurrency / 2));
-
-					return new PromiseQueue(concurrency);
+					return new PromiseQueue({ parent: queue });
 				})()
-			: new PromiseQueue(maxConcurrencyOrQueue as number);
+			: new PromiseQueue({
+					concurrency: maxConcurrencyOrQueue as number
+				});
 
 	let errorOccurred = false;
 	let error: any;

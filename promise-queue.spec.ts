@@ -90,7 +90,7 @@ describe('/promise-queue', () => {
 		let executionOrder: number[];
 
 		beforeEach(() => {
-			queue = new PromiseQueue(2); // Set concurrency to 2
+			queue = new PromiseQueue({ concurrency: 2 });
 			executionOrder = [];
 		});
 
@@ -276,10 +276,10 @@ describe('/promise-queue', () => {
 		let child3: PromiseQueue;
 
 		beforeEach(() => {
-			parent = new PromiseQueue(6);
-			child1 = new PromiseQueue(2);
-			child2 = new PromiseQueue(2);
-			child3 = new PromiseQueue(2);
+			parent = new PromiseQueue({ concurrency: 6 });
+			child1 = new PromiseQueue({ concurrency: 2 });
+			child2 = new PromiseQueue({ concurrency: 2 });
+			child3 = new PromiseQueue({ concurrency: 2 });
 		});
 
 		it('should register child with parent when processing tasks', async () => {

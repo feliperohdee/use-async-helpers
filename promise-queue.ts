@@ -8,11 +8,11 @@ class PromiseQueue {
 	public runningPromises: number;
 	public started: boolean;
 
-	constructor(concurrency: number = 5) {
+	constructor(options?: { concurrency?: number; parent?: PromiseQueue }) {
 		this.children = new Set();
-		this.concurrency = concurrency;
+		this.concurrency = options?.concurrency ?? 5;
 		this.id = crypto.randomUUID();
-		this.parent = null;
+		this.parent = options?.parent || null;
 		this.queue = [];
 		this.running = false;
 		this.runningPromises = 0;
@@ -70,7 +70,7 @@ class PromiseQueue {
 
 	private registerChild(child: PromiseQueue): void {
 		this.children.add(child);
-		
+
 		// Update concurrency for all children when a new child is added
 		for (const childQueue of this.children) {
 			childQueue.updateConcurrency();

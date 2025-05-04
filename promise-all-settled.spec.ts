@@ -60,7 +60,7 @@ describe('/promise-all-settled', () => {
 			}
 		];
 
-		const res = await promiseAllSettled(tasks, new PromiseQueue(2));
+		const res = await promiseAllSettled(tasks, new PromiseQueue({ concurrency: 2 }));
 
 		expect(executedTasks).toEqual([2, 1, 3]);
 		expect(res).toEqual([
@@ -71,7 +71,7 @@ describe('/promise-all-settled', () => {
 	});
 
 	it('should handle deadlock with queue', async () => {
-		const queue = new PromiseQueue(10);
+		const queue = new PromiseQueue({ concurrency: 10 });
 		const task1 = vi.fn(async () => {
 			await queue.wait(100);
 			await task2();

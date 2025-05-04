@@ -74,7 +74,6 @@ describe('/promise-all', () => {
 	});
 
 	it('should runs tasks concurrently with queue', async () => {
-		const maxConcurrency = 2;
 		const runningTasks = new Set();
 		const maxObserved = { value: 0 };
 		const tasks = Array(5)
@@ -87,12 +86,12 @@ describe('/promise-all', () => {
 				return index;
 			});
 
-		await promiseAll(tasks, new PromiseQueue(maxConcurrency));
-		expect(maxObserved.value).toEqual(maxConcurrency);
+		await promiseAll(tasks, new PromiseQueue({ concurrency: 2 }));
+		expect(maxObserved.value).toEqual(2);
 	});
 
 	it('should handle deadlock with queue', async () => {
-		const queue = new PromiseQueue(1);
+		const queue = new PromiseQueue({ concurrency: 1 });
 		const task1 = vi.fn(async () => {
 			await queue.wait(100);
 			await task2();
