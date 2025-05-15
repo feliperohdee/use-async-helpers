@@ -1,8 +1,10 @@
 {
 	"author": "Felipe Rohde <feliperohdee@gmail.com>",
 	"devDependencies": {
+		"eslint": "^9.26.0",
 		"prettier": "^3.4.1",
 		"typescript": "^5.7.2",
+		"typescript-eslint": "^8.32.1",
 		"vitest": "^2.1.6"
 	},
 	"files": [
@@ -16,8 +18,8 @@
 		"url": "https://github.com/feliperohdee/use-async-helpers"
 	},
 	"scripts": {
-		"build": "rm -rf dist && tsc -p tsconfig.json",
-		"lint": "prettier --write . && yarn tsc",
+		"build": "rm -rf dist && yarn lint && tsc -p tsconfig.json",
+		"lint": "prettier --write . && yarn eslint . && yarn tsc",
 		"npm-publish": "yarn test --run && yarn build && yarn version --patch --no-git-tag-version && yarn publish --non-interactive",
 		"test": "vitest"
 	},

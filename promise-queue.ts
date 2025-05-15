@@ -49,7 +49,7 @@ class PromiseQueue {
 	private async launchTask(fn: () => Promise<any>) {
 		try {
 			await this.executeTask(fn);
-		} catch (error) {
+		} catch {
 			// Catch any errors from executeTask (shouldn't happen as it catches internally)
 		} finally {
 			this.runningPromises--;
